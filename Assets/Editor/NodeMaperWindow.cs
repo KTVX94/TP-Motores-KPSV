@@ -9,8 +9,14 @@ public class NodeMaperWindow : EditorWindow {
     private GameObject _target;
     private GameObject _node;
 
+    public List<int> takenLayers;
+    public Dictionary<string, TerrInfo> terrains;
     public float dirtModifier;
     public float waterModifier;
+
+    public int lyr;
+    public float weight;
+    public string terrName;
 
     private GameObject NodeParent;
 
@@ -39,8 +45,16 @@ public class NodeMaperWindow : EditorWindow {
         NodeMaperWindow myWindow = (NodeMaperWindow)GetWindow(typeof(NodeMaperWindow));
         myWindow.wantsMouseMove = true;
         myWindow.Show();
-        
+        if (myWindow.terrains == null) myWindow.terrains = new Dictionary<string, TerrInfo>();
+        if (myWindow.takenLayers == null)
+        {
+            myWindow.takenLayers = new List<int>();
+            myWindow.takenLayers.Add(18);
+        }
         myWindow.nodes = new List<GameObject>();
+        myWindow.terrName = "";
+        myWindow.weight = 1;
+        myWindow.lyr = 9;
     }
 
     private void OnGUI() 
@@ -82,8 +96,34 @@ public class NodeMaperWindow : EditorWindow {
 
         EditorGUILayout.Space();
 
-        dirtModifier = EditorGUILayout.FloatField("Dirt Weight", dirtModifier);
-        waterModifier = EditorGUILayout.FloatField("Water Weight", waterModifier);
+        terrName = EditorGUILayout.TextField("Name", terrName);
+        weight = EditorGUILayout.FloatField("Weight", weight);
+        lyr = EditorGUILayout.IntField("Layer", lyr);
+        if (GUILayout.Button("Create"))
+        {
+            for(int i = 0; i < takenLayers.Count; i++)
+            {
+                if (lyr == takenLayers[i])
+                {
+                    return;
+                }
+            }
+            terrains.Add(terrName, new TerrInfo());
+            terrains[terrName].terrweight = weight;
+            terrains[terrName].terrlyr = lyr;
+
+            /*
+            Debug.Log(terrains[terrName].terrweight);
+            Debug.Log(terrains[terrName].terrlyr);
+            Debug.Log(terrName);
+            */
+
+            terrName = "";
+            weight = 1;
+            lyr = 9;
+        }
+        //dirtModifier = EditorGUILayout.FloatField("Dirt Weight", dirtModifier);
+        //waterModifier = EditorGUILayout.FloatField("Water Weight", waterModifier);
 
         EditorGUILayout.Space();
 
