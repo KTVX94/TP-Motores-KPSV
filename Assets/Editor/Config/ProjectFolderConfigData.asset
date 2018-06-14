@@ -11,3 +11,4 @@ MonoBehaviour:
   m_Script: {fileID: 0}
   m_Name: ProjectFolderConfigData
   m_EditorClassIdentifier: Assembly-CSharp-Editor::ProjectFolderConfigData
+  Extentions: []
