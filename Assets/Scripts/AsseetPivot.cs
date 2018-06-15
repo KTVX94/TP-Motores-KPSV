@@ -59,34 +59,55 @@ public class AsseetPivot : MonoBehaviour {
 
     }
 
-    public void CreateAsset(int quantity, float radious)
+    public void CreateAsset(int quantity, float radious, bool separation)
     {
         if(asset != null)
         {
             if(quantity > 1)
             {
-                RaycastHit hit1;
-                if (Physics.Raycast(transform.position, -this.transform.up, out hit1, 40f))
+                if(!separation)
                 {
-                    if (hit1.collider.gameObject.layer == 18)
+                    RaycastHit hitNC;
+                    if (Physics.Raycast(transform.position, -this.transform.up, out hitNC, 40f))
                     {
-                        empty = new GameObject();
-                        empty.transform.position = hit1.point;
-                        var angDist = 360 / quantity;
-                        for (int i = 0; i < quantity; i++)
+                        if (hitNC.collider.gameObject.layer == 18)
                         {
-                            Vector3 rightLimit = Quaternion.AngleAxis(angDist, empty.transform.up) * empty.transform.forward;
-                            rightLimit = empty.transform.position + (rightLimit * radious);
-                            var a = Instantiate(asset);
-                            a.transform.position = rightLimit;
-                            //a.transform.position += new Vector3(0, a.GetComponent<Collider>().bounds.size.y / 2, 0);
-                            //a.gameObject.layer = 17;
-                            angDist = angDist + (360 / quantity);
-                            a.gameObject.layer = 17;
+                            for (int i = 0; i < quantity; i++)
+                            {   
+                                var a = Instantiate(asset);
+                                a.transform.position = hitNC.point;
+                                a.transform.position += new Vector3(Random.Range(-radious, radious), a.GetComponent<Collider>().bounds.size.y / 2, Random.Range(-radious, radious));
+                                a.gameObject.layer = 17;
+                            }
                         }
-                        DestroyImmediate(empty);
+                    }
+                }else
+                {
+                    RaycastHit hit1;
+                    if (Physics.Raycast(transform.position, -this.transform.up, out hit1, 40f))
+                    {
+                        if (hit1.collider.gameObject.layer == 18)
+                        {
+                            empty = new GameObject();
+                            empty.transform.position = hit1.point;
+                            var angDist = 360 / quantity;
+                            for (int i = 0; i < quantity; i++)
+                            {
+                                Vector3 rightLimit = Quaternion.AngleAxis(angDist, empty.transform.up) * empty.transform.forward;
+                                rightLimit = empty.transform.position + (rightLimit * radious);
+                                var a = Instantiate(asset);
+                                a.transform.position = rightLimit;
+                                a.transform.position += new Vector3(0, a.GetComponent<Collider>().bounds.size.y / 2, 0);
+                                //a.gameObject.layer = 17;
+                                angDist = angDist + (360 / quantity);
+                                a.gameObject.layer = 17;
+                            }
+                            DestroyImmediate(empty);
+                        }
                     }
                 }
+
+                
             }else
             {
                 RaycastHit hit;

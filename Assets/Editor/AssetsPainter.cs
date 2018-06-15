@@ -10,6 +10,7 @@ public class AssetsPainter : EditorWindow {
 
     private GameObject _myPivot;
     public AssetsPainterEditor myEd;
+   
 
     //[MenuItem("CustomTools/AssetsPainter")]
     public static void OpenWindow(AssetsPainterEditor ed)
@@ -17,8 +18,8 @@ public class AssetsPainter : EditorWindow {
         AssetsPainter myWindow = (AssetsPainter)GetWindow(typeof(AssetsPainter));
         myWindow.wantsMouseMove = true;
         myWindow.myEd = ed;
-        myWindow.Show();
         
+        myWindow.Show();
     }
 
     private void OnGUI()
