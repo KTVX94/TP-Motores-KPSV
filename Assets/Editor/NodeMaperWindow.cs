@@ -24,8 +24,6 @@ public class NodeMaperWindow : EditorWindow {
 
     private GameObject NodeParent;
 
-    //Node n = new Node();
-
     public List<GameObject> nodes;
 
     int filas;
@@ -55,7 +53,6 @@ public class NodeMaperWindow : EditorWindow {
         if (myWindow.takenLayers == null)
         {
             myWindow.takenLayers = new List<int>();
-            myWindow.takenLayers.Add(18); //Layer que ya esta seteada, se puede borrar esta linea y borrar la layer 18 en el editor
         }
 
         myWindow.container = GameObject.Find("Terrain Container");
@@ -112,30 +109,11 @@ public class NodeMaperWindow : EditorWindow {
             }
         }
 
-        /*if (pivot && target && node && parent)
-        {
-            if (GUILayout.Button("Map"))
-            {
-                takeBounds();
-                Maper();
-                Debug.Log(nodes.Count);
-                foreach (var item in nodes)
-                {
-                    item.GetComponent<Node>().SearchLinks();
-                }
-            }
-        }*/
-
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("Terrain Creator", _mainHeaderStyle);
         EditorGUILayout.Space();
 
         CreateTerrain();
-
-        
-
-
-
 
     }
 
@@ -199,68 +177,17 @@ public class NodeMaperWindow : EditorWindow {
     {
         _arrayOfTerrains = container.GetComponents<TerrInfo>();
 
-
-        #region mapper original (comentado, borrar)
-        /*
-      Vector3 initPos = _pivot.transform.position;
-
-      for (int i = 0; i < filas + 1; i++)
-      {
-          //CreatNode(transform);
-          RaycastHit firstHit;
-          if (Physics.Raycast(_pivot.transform.position, -_pivot.transform.up, out firstHit, y + 4f))
-          {
-              for(int k = 0; k < listOfTerrains.Count; k++)
-              {
-                  if (firstHit.collider.gameObject.layer == listOfTerrains[k].terrlyr)
-                      NodeCreator(firstHit.point, listOfTerrains[k].terrweight);
-              }
-
-          }
-
-          for (int j = 0; j < columnas; j++)
-          {
-              _pivot.transform.position = new Vector3(_pivot.transform.position.x + _disX, _pivot.transform.position.y, _pivot.transform.position.z);
-              //CreatNode(transform);
-              //ThrowRayCast(transform);
-              RaycastHit hit;
-              if (Physics.Raycast(_pivot.transform.position, -_pivot.transform.up, out hit, 11f))
-              {
-                  //Debug.Log("tiro el ray");
-                  if (hit.collider.gameObject.layer == LayerConstants.floor) NodeCreator(hit.point, 1);
-                  //else if (hit.collider.gameObject.layer == LayerConstants.water) NodeCreator(hit.point, waterModifier);
-                  //else if (hit.collider.gameObject.layer == LayerConstants.dirt) NodeCreator(hit.point, dirtModifier);
-              }
-
-          }
-
-          _pivot.transform.position = new Vector3(initPos.x, initPos.y, initPos.z + _disZ);
-          initPos = _pivot.transform.position;
-      }
-
-
-      foreach (var item in nodes)
-      {
-          if (item.activeSelf == false)
-          {
-              item.SetActive(true);
-          }
-      }*/
-        #endregion
-
         Vector3 initPos = _pivot.transform.position;
 
         for (int i = 0; i < filas + 1; i++)
         {
-            //CreatNode(transform);
+            Debug.Log("Entro en el for de filas, i = " + i);
             RaycastHit firstHit;
             if (Physics.Raycast(_pivot.transform.position, -_pivot.transform.up, out firstHit, y + 4f))
             {
                 for (int k = 0; k < _arrayOfTerrains.Length; k++)
                 {
-                    //if (firstHit.collider.gameObject.layer == listOfTerrains[k].terrlyr)
-                    //  NodeCreator(firstHit.point, listOfTerrains[k].terrweight);
-                    if (firstHit.collider.gameObject.layer == _arrayOfTerrains[k].terrlyr)
+                  if (firstHit.collider.gameObject.layer == _arrayOfTerrains[k].terrlyr)
                         if(_arrayOfTerrains[k].terrweight != 0)
                            NodeCreator(firstHit.point, _arrayOfTerrains[k].terrweight);
                 }
@@ -269,13 +196,11 @@ public class NodeMaperWindow : EditorWindow {
 
             for (int j = 0; j < columnas; j++)
             {
+                Debug.Log("Entro en el for de columnas. J = " + j);
                 _pivot.transform.position = new Vector3(_pivot.transform.position.x + _disX, _pivot.transform.position.y, _pivot.transform.position.z);
-                //CreatNode(transform);
-                //ThrowRayCast(transform);
                 RaycastHit hit;
                 if (Physics.Raycast(_pivot.transform.position, -_pivot.transform.up, out hit, 11f))
                 {
-                    //Debug.Log("tiro el ray");
                     for (int l = 0; l < _arrayOfTerrains.Length; l++)
                     {
                         if (hit.collider.gameObject.layer == _arrayOfTerrains[l].terrlyr)
