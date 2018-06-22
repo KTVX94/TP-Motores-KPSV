@@ -3,385 +3,383 @@ using System.IO;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
-using ProjectPreConfig;
+
+namespace ProjectPreConfig
+{
+	public class ProjectOrganizer : EditorWindow
+	{
+		//--------------------------------------------Variables-----------------------------------------------------------------------------------
+		//StoredInfo
+		static int SelectedPreset = 0;
+		string ConfigRoute;
+		string[] _AviablePresets;
+
+		private List<string> _selectedFolders = new List<string>();//Carpetas que estare filtrando.
+		private List<string[]> _findedElements = new List<string[]>();//donde: [0] = nombre del asset, [1] = extension, [2] ruta original y [3] Ruta de destino deseado.
+
+		//----------------------------------------Basic Methods-------------------------------------------------------------------------------------
+		[MenuItem("CustomTools/OrganizeProject")]
+		public static void OpenWindow()
+		{
+			var MainWindow = GetWindow<ProjectOrganizer>();
+			MainWindow.ConfigRoute = Application.dataPath + "/Editor/Config";
+			MainWindow.LoadConfigInfo();
+			MainWindow.Show();
+		}
+		private void LoadConfigInfo()
+		{
+			if (!Directory.Exists(ConfigRoute))
+			{
+				ConfigVisualizer.OpenWindow();
+			}
+			else
+			{
+				MonoBehaviour.print("La carpeta de configuracion existe.\nBuscando archivo de configuracion...");
+				if (File.Exists(ConfigRoute + "/ProjectConfigData.json"))
+					ConfigVisualizer.LoadConfigInfo();
+				else
+					ConfigVisualizer.OpenWindow();
+			}
+		}
+
+		private void OnGUI()
+		{
+			var Configs = ProjectFolderConfig.Configurations.Presets;
+			//------------------------------------------------------------------------------------------------------------------------
+			//--------------------------------------Organization Select---------------------------------------------------------------
+			EditorGUILayout.BeginHorizontal();
+			if (Configs.Count > 0)
+			{
+				List<string> ConfigNames = new List<string>();
+				foreach (var item in ProjectFolderConfig.Configurations.Presets)
+				{
+					ConfigNames.Add(item.ConfigurationName);
+
+					_selectedFolders.Clear();
+					foreach (var folder in item.FolderPresets)
+					{
+						_selectedFolders.Add(folder.FolderName);
+					}
+				}
+				_AviablePresets = ConfigNames.ToArray();
+			}
+			else _AviablePresets = new string[] { "Empty" };
+
+			SelectedPreset = EditorGUILayout.Popup(SelectedPreset, _AviablePresets);
+
+			//------------------------------------------------------------------------------------------------------------------------
+			GUI.backgroundColor = Color.cyan;
+			//El valor por defecto de extension va a ser (All), significando que la carpeta acepta todo tipo de archivos.
+			if (GUILayout.Button("Show FolderConfig")) //Este boton nos abre las configuraciones.
+			{
+				if (_AviablePresets.Length > 1)
+					ConfigVisualizer.OpenWindow(SelectedPreset);
+				else
+					ConfigVisualizer.OpenWindow();
+			}
+			EditorGUILayout.EndHorizontal();
+			//--------------------------------------Asset Search----------------------------------------------------------------------
+			GUI.backgroundColor = Color.white;
+			if (GUILayout.Button("Scan Project!"))
+			{
+				CheckIFDefaultFolderExists();
+				ScanProject();
+			}
+			//-------------------------------------Reorganize Assets!------------------------------------------------------------------
+			GUI.backgroundColor = Color.green;
+			EditorGUI.BeginDisabledGroup(_findedElements.Count > 0 ? false : true);
+			if (GUILayout.Button("Reorganize!"))
+			{
+				MonoBehaviour.print("Elementos a ordenar: " + _findedElements.Count + ".");
+				foreach (var item in _findedElements) //Funcion para mover los objetos encontrados.
+				{
+					MonoBehaviour.print(string.Format("El objeto {0} sera reubicado.",item[0]));
+					AssetDatabase.MoveAsset(item[2],item[3]);
+				}
+				_findedElements.Clear();
+			}
+			EditorGUI.EndDisabledGroup();
+		}
+
+		/// <summary>
+		/// Recorre los directorios del proyecto y encuentra archivos que estan fuera de lugar, segun la configuracion seleccionada.
+		/// </summary>
+		private void ScanProject()
+		{
+			//Limpio la busqueda anterior.
+			_findedElements.Clear();
+
+			//Chequeo todos los tipos cubiertos por las carpetas.
+			var A = ProjectFolderConfig.Configurations.Presets[SelectedPreset];
+			MonoBehaviour.print("Preset Seleccionado: " + A.ConfigurationName);
 
 
-    public class ProjectOrganizer : EditorWindow
-    {
-        //--------------------------------------------Variables-----------------------------------------------------------------------------------
-        //StoredInfo
-        static ProjectFolderConfigData ConfigData;
-        static string ConfigRoute = "Assets/Editor/Config";
-
-        static int SelectedPreset = 0;
-        string[] _AviablePresets;
-        private List<string[]> FindedElements = new List<string[]>();
-        public List<string> DefaultProjectFolders = new List<string>{
-        "Editor",
-        "Scripts",
-        "Prefabs",
-        "Materials",
-        "Scenes",
-        "Textures",
-        "Sprites",
-        "Animations",
-    }; //Esto tiene que ser reemplazado por ConfigData.GetSelectedPresetFolderSettings(SelectedPreset);
-        public List<string> FilterTypes = new List<string>
-    {
-        "t:AnimationClip",
-        "t:Material",
-        "t:AudioClip",
-        "t:AudioMixer",
-        "t:Font",
-        "t:GUISkin",
-        "t:Mesh",
-        "t:Model",
-        "t:PhysicMaterial",
-        "t:Prefab",
-        "t:Scene",
-        "t:Script",
-        "t:Shader",
-        "t:Sprite",
-        "t:Texture",
-        "t:VideoClip"
-    };
-
-        //----------------------------------------Basic Methods-------------------------------------------------------------------------------------
-        [MenuItem("CustomTools/OrganizeProject")]
-        public static void OpenWindow()
-        {
-            var MainWindow = GetWindow<ProjectOrganizer>();
-            LoadConfigInfo();
-            MainWindow.Show();
-        }
-        private static void LoadConfigInfo()
-        {
-            if (!AuxiliaryMethods.ContainsItem("ProjectFolderConfigData", ConfigRoute))
-            {
-                var ConfigurationWindow = GetWindow<ConfigVisualizer>();
-                ConfigurationWindow.Show();
-                MonoBehaviour.print("El archivo de Configuracion no fue encontrado: Se ha abierto la ventana de configuracion!");
-            }
-            else
-            {
-                ConfigData = AssetDatabase.LoadAssetAtPath<ProjectFolderConfigData>(ConfigRoute + "/ProjectFolderConfigData.Asset");
-                MonoBehaviour.print("Archivo de configuracion encontrado.");
-            }
-        }
-
-        private void OnGUI()
-        {
-            DrawMainWindowOptions();
-        }
-        //-------------------------------------------------------------------------------------------------------------------------------------------
-        //----------------------------------------Custom Methods-------------------------------------------------------------------------------------
-        private void DrawMainWindowOptions()
-        {
-            //------------------------------------------------------------------------------------------------------------------------
-            //--------------------------------------Organization Select---------------------------------------------------------------
-            EditorGUILayout.BeginHorizontal();
-            if (ConfigData.Presets.Count > 0)
-            {
-                List<string> ConfigNames = new List<string>();
-                foreach (var item in ConfigData.Presets)
-                {
-                    ConfigNames.Add(item.ConfigurationName);
-                }
-                _AviablePresets = ConfigNames.ToArray();
-            }
-            else _AviablePresets = new string[] { "Empty" };
-
-            SelectedPreset = EditorGUILayout.Popup(SelectedPreset, _AviablePresets);
-
-            //------------------------------------------------------------------------------------------------------------------------
-            GUI.backgroundColor = Color.cyan;
-            if (GUILayout.Button("Show FolderConfig")) //Este boton nos abre las configuraciones.
-            {
-                var w = GetWindow<ConfigVisualizer>();
-                w.Show();
-            }
-            //Tengo que dibujar un algo que me permita cambiar el nombre (que por defecto tenga un nombre genèrico) asignar un tipo de objeto y por ultimo una extension especifica
-            //El valor por defecto de extension va a ser (All) que sera especial para cada caso, ej: Models (Obj,FBX).
-            EditorGUILayout.EndHorizontal();
-            //--------------------------------------Asset Search----------------------------------------------------------------------
-            GUI.backgroundColor = Color.white;
-            if (GUILayout.Button("Scan Project!"))
-            {
-                String[] D = AssetDatabase.FindAssets("t:Material");
-                if (D.Length > 0)
-                {
-                    foreach (var item in D)
-                    {
-                        string a = AssetDatabase.GUIDToAssetPath(item); //Ruta relativa del asset.
-                        var b = GetNameAndExtention(a);
-                        FindedElements.Add(b);
-
-                        //Debugear el objeto obtenido.
-                        string c = string.Format("Object Name: {0}, extention: {1}, and path: {2}", b[0], b[1], b[2]);
-                        MonoBehaviour.print(c);
-                    }
-                }
-            }
-            //-------------------------------------Reorganize Assets!------------------------------------------------------------------
-            GUI.backgroundColor = Color.green;
-            if (GUILayout.Button("Reorganize!"))
-            {
-                string NewPathWithoutName = "";
-                //Aca hay que seleccionar la carpeta de destino.
-                if (ContainsDirectory(DefaultProjectFolders[3]))
-                {
-                    NewPathWithoutName = "Assets/" + DefaultProjectFolders[3] + "/";
-                }
-                else
-                {
-                    //Recreamos el directorio.
-                }
+			List<string> _coveredTypes = new List<string>();//Tipos de assets que seran buscados.
+			List<string[]> _folderDirs = new List<string[]>();//Informacion de la carpeta de destino.
 
 
-                foreach (var item in FindedElements) //Funcion para mover los objetos encontrados.
-                {
-                    if (item[1] == ".mat")
-                    {
+			foreach (var folder in A.FolderPresets)
+			{
+				var ti = folder.TypeIndex;
+				var n = ProjectFolderConfig.Configurations.FilterTypes[ti].FilterName;
+				if (n != "Any")
+				{
+					string Fname = folder.FolderName;
+					string FDir = "Assets/" + folder.FolderName;
+					string Ftype = n;
+					string[] Finfo = { Fname, FDir, Ftype};
+					_folderDirs.Add(Finfo);
+					_coveredTypes.Add(n);
+				}
+			}
 
-                        MonoBehaviour.print(NewPathWithoutName + " extension: " + item[1] + ".");
-                        AssetDatabase.MoveAsset(item[2], NewPathWithoutName + item[0] + item[1]);
-                    }
-                }
+			//For Debug.
+			//foreach (var coveredType in CoveredTypes)
+			//{
+			//    MonoBehaviour.print("El tipo: " + coveredType + " esta en una de las configuraciones.");
+			//}
 
-                //----------------------------------------Final Actions--------------------------------------------------------------------
-                UpdateDatabase();
-            }
-        }
-        public void UpdateDatabase()
-        {
-            //para que aparezcan los archivos nuevos creados o los cambios hechos:
-            //aplica los cambios hechos a los assets en memoria
-            AssetDatabase.SaveAssets();
-            //recarga la database (y actualiza el panel "project" del editor)
-            AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
-        }
-        //----------------------------------------Auxiliary Methods-----------------------------------------------------------------------------------
-        #region Auxiliary Methods
-        /// <summary>
-        /// Recorre una lista por Defecto y genera carpetas dentro de Assets.
-        /// </summary>
-        private void CheckIFDefaultFolderExists()
-        {
-            foreach (var item in DefaultProjectFolders)
-            {
-                if (!ContainsDirectory(item))
-                {
-                    MonoBehaviour.print("Se ha creado la carpeta " + item + "!!");
-                    AssetDatabase.CreateFolder("Assets", item);
-                }
-            }
-        }
-        /// <summary>
-        /// Chequea si la carpeta especificada existe dentro del proyecto.
-        /// </summary>
-        /// <param name="FolderName">Nombre de la carpeta a chequear.</param>
-        /// <returns>Verdadero si la carpeta existe dentro Assets.</returns>
-        public static bool ContainsDirectory(string FolderName)
-        {
-            string Route = Application.dataPath; //Application.dataPath == Origen de la carpeta Assets(Path Global).
-            if (Directory.Exists(Route + "/" + FolderName))
-                return true;
-            else
-                return false;
-        }
+			//Busco todos los archivos del tipo determinado en Assets. ---> Se obtiene una lista de todos los objetos que concuerden con el tipo dado dentro del proyecto.
+			//Si la ruta del objeto, no concuerda con la ruta deseada del objeto, y las extensiones, son las correctas; Añadimos el objeto a la cola de reordenamiento.
+			foreach (var type in _coveredTypes)
+			{
+				MonoBehaviour.print("Buscando: " + type);
+				List<string> Extentions = new List<string>();
+				foreach (var filter in ProjectFolderConfig.Configurations.FilterTypes)
+					if (filter.FilterName == type)
+					{
+						Extentions = filter.ExtentionsAllowed;
+						MonoBehaviour.print("Buscando extensiones:" + filter.GetExtentionAllowedList());
+					}
 
-        /// <summary>
-        /// Dado un Path relativo, devuelve un array de string que contiene el nombre, la extension y su path.
-        /// </summary>
-        /// <returns>Un array de string donde [0] = Nombre, [1] = Extension, [2] = Ruta de acceso relativa.</returns>
-        public static string[] GetNameAndExtention(string RelativePath)
-        {
-            string OriginalPath = RelativePath;//Path original que recivimos, es la relativa.
-                                               //string CompleteOriginalPath = "";
-            string b = OriginalPath;
+				//Selecciono la carpeta de destino original.
+				string route = "";
+				foreach (var folder in _folderDirs)
+					if (folder[2] == type)
+						route = folder[1];
 
-            List<char> extentionChars = new List<char>();
-            string extention = "";
-            List<char> NameChars = new List<char>();
-            string Name = "";
+				MonoBehaviour.print("Ruta de carpeta deseada: " + route);
 
-            //Calculo el path completo.
-            //string AssetsPath = Application.dataPath;
-            //CompleteOriginalPath = RelativePath;
-            //MonoBehaviour.print("El path completo es: " + CompleteOriginalPath);
+				String[] D = AssetDatabase.FindAssets("t:" + type);
+				List<string[]> FirstFinded = new List<string[]>();
+				if (D.Length > 0)
+				{
+					foreach (var item in D)
+					{
+						string a = AssetDatabase.GUIDToAssetPath(item); //Ruta relativa del asset.
+						var b = GetNameAndExtention(a);
 
-            //Recorro el string de atras para adelante y obtengo su extension.
-            for (int i = b.Length - 1; i >= 0; i--)
-            {
-                if (b[i] != '.')
-                {
-                    extentionChars.Insert(0, b[i]);
-                    //MonoBehaviour.print(String.Format("Index: {0}, Character: {1}, Largo de b: {2}, extention lenght: {3}",i, b[i], b.Length, extention.Length));
-                }
-                else
-                {
-                    extentionChars.Insert(0, b[i]);
-                    foreach (var chara in extentionChars)
-                        extention += chara;
-                    //MonoBehaviour.print(String.Format("Index: {0}, Character: {1}, Largo de b: {2}, extention lenght: {3}", i, b[i], b.Length, extention.Length));
-                    break;
-                }
-            }
+						if (b[2] != route + "/" + b[0] + b[1] && Extentions.Contains(b[1]))
+						{
+							string ObjectivePath = route + "/" + b[0] + b[1];
+							string[] F = {b[0],b[1],b[2],ObjectivePath };
+							if (!_findedElements.Contains(F))
+								FirstFinded.Add(b);
+							MonoBehaviour.print("El objeto: " + b[0] + " -----> No esta ordenado.\n Ruta objetivo deseada: " + ObjectivePath);
 
-            int startingPos = (b.Length - 1) - extention.Length;
-            for (int i = startingPos; i >= 0; i--)//Obtengo el nombre;
-            {
-                if (b[i] == '/')
-                {
-                    foreach (var chara in NameChars)
-                        Name += chara;
-                    break;
-                }
-                else
-                    NameChars.Insert(0, b[i]);
-            }
-            //MonoBehaviour.print("Nombre Final es: " + Name);
+							//Debugear el objeto obtenido.
+							string c = string.Format("Object Name: {0}, extention: {1}, and path: {2}", b[0], b[1], b[2]);
+							MonoBehaviour.print(c);
+						}
+					}
+				}
+				if (FirstFinded.Count > 0)
+					_findedElements.AddRange(FirstFinded);
+				else
+					MonoBehaviour.print(string.Format("No se han hallado objetos del tipo {0} que esten desordenados",type));
+			}
+		}
 
-            return new string[] { Name, extention, OriginalPath };//Complete path no esta incluido.
-        }
-        #endregion
-    }
-    // Auxiliares
-    public static class AuxiliaryMethods
-    {
-        /// <summary>
-        /// Chequea si la carpeta contiene un asset con el nombre especificado.
-        /// </summary>
-        /// <param name="AssetName">Nombre del Asset</param>
-        /// <param name="FolderPath">Ruta de la carpeta contenedora</param>
-        /// <returns>Verdadero si la carpeta contiene un asset con el nombre especificado.</returns>
-        public static bool ContainsItem(string AssetName, string FolderPath)
-        {
-            string[] Path = { FolderPath };
-            string[] founded = AssetDatabase.FindAssets(AssetName, Path);
-            if (founded.Length > 0)
-                return true;
-            else
-                return false;
-        }
-        public static bool ContainsItem(string AssetName, string FolderPath, out string[] AssetsFounded)
-        {
-            string[] Path = { FolderPath };
-            string[] founded = AssetDatabase.FindAssets(AssetName, Path);
-            AssetsFounded = founded;
-            if (founded.Length > 1)
-                return true;
-            else
-                return false;
-        }
-    }
+		//----------------------------------------Auxiliary Methods-----------------------------------------------------------------------------------
+		#region Auxiliary Methods
+		/// <summary>
+		/// Recorre una lista por Defecto y genera carpetas dentro de Assets.
+		/// </summary>
+		private void CheckIFDefaultFolderExists()
+		{
+			MonoBehaviour.print("Chequeo si existen las carpetas por defecto");
+			var AssetPath = Application.dataPath;
+			foreach (var folder in _selectedFolders)
+			{
+				if (!Directory.Exists(AssetPath + "/" + folder))
+				{
+					MonoBehaviour.print("La carpeta: " + folder + " no existe.\n Se ha creado una nueva carpeta...");
+					AssetDatabase.CreateFolder("Assets", folder);
+				}
+				else
+					MonoBehaviour.print("La carpeta: " + folder + " existe.");
+			}
+		}
+		/// <summary>
+		/// Dado un Path relativo, devuelve un array de string que contiene el nombre, la extension y su path.
+		/// </summary>
+		/// <returns>Un array de string donde [0] = Nombre, [1] = Extension, [2] = Ruta de acceso relativa.</returns>
+		public static string[] GetNameAndExtention(string RelativePath)
+		{
+			string OriginalPath = RelativePath;//Path original que recivimos, es la relativa.
+											   //string CompleteOriginalPath = "";
+			string b = OriginalPath;
 
-    //................................................................................................................................................
-    #region Almacenaje de datos
-    public struct FilterType
-    {
-        public string FilterName;
-        public List<string> ExtentionsAllowed;
+			List<char> extentionChars = new List<char>();
+			string extention = "";
+			List<char> NameChars = new List<char>();
+			string Name = "";
 
-        public FilterType(string Name, List<string> Extentions)
-        {
-            FilterName = Name;
-            ExtentionsAllowed = Extentions;
-        }
-    }
+			//Calculo el path completo.
+			//string AssetsPath = Application.dataPath;
+			//CompleteOriginalPath = RelativePath;
+			//MonoBehaviour.print("El path completo es: " + CompleteOriginalPath);
 
-    public class ConfigPreset
-    {
-        public string ConfigurationName = "NewConfig";
-        public List<FolderConfig> FolderPresets = new List<FolderConfig>();
+			//Recorro el string de atras para adelante y obtengo su extension.
+			for (int i = b.Length - 1; i >= 0; i--)
+			{
+				if (b[i] != '.')
+				{
+					extentionChars.Insert(0, b[i]);
+					//MonoBehaviour.print(String.Format("Index: {0}, Character: {1}, Largo de b: {2}, extention lenght: {3}",i, b[i], b.Length, extention.Length));
+				}
+				else
+				{
+					extentionChars.Insert(0, b[i]);
+					foreach (var chara in extentionChars)
+						extention += chara;
+					//MonoBehaviour.print(String.Format("Index: {0}, Character: {1}, Largo de b: {2}, extention lenght: {3}", i, b[i], b.Length, extention.Length));
+					break;
+				}
+			}
 
-        public List<FolderConfig> GetFolderPresets()
-        {
-            if (FolderPresets.Count > 0)
-                return FolderPresets;
-            else
-                return new List<FolderConfig>();
-        }
-        public void AddFolderPreset(string NewFolderName, int MainType, List<string> Extentions)
-        {
-            FolderConfig N = new FolderConfig().SetFolderName(NewFolderName).SetType(MainType).SetExtentions(Extentions);
-            FolderPresets.Add(N);
-        }
-    }
-    public class FolderConfig
-    {
-        public string FolderName = "NewFolder";
-        public int TypeIndex;
-        public List<string> extentions;
-        private bool FolderPerExtention = false;
-        public bool EnableFolderPerExtention
-        {
-            get
-            {
-                return FolderPerExtention;
-            }
-            set
-            {
-                FolderPerExtention = value;
-            }
-        }
+			int startingPos = (b.Length - 1) - extention.Length;
+			for (int i = startingPos; i >= 0; i--)//Obtengo el nombre;
+			{
+				if (b[i] == '/')
+				{
+					foreach (var chara in NameChars)
+						Name += chara;
+					break;
+				}
+				else
+					NameChars.Insert(0, b[i]);
+			}
+			//MonoBehaviour.print("Nombre Final es: " + Name);
 
-        public FolderConfig SetFolderName(string Name)
-        {
-            FolderName = Name;
-            return this;
-        }
-        public FolderConfig SetType(int AttachedType)
-        {
-            TypeIndex = AttachedType;
-            return this;
-        }
-        public FolderConfig SetExtentions(List<string> AviableExtentions)
-        {
-            extentions = AviableExtentions;
-            return this;
-        }
-    }
+			return new string[] { Name, extention, OriginalPath };//Complete path no esta incluido.
+		}
+		#endregion
+	}
 
-    public class ProjectFolderConfigData : ScriptableObject
-    {
-        public List<ConfigPreset> Presets = new List<ConfigPreset>();
-        public List<string> Extentions = new List<string>();
-        public List<FilterType> FilterTypes = new List<FilterType>()
-    {
-        new FilterType("Any", new List<string>()),
-        new FilterType("AnimationClip",new List<string>()),
-        new FilterType("Material",new List<string>()),
-        new FilterType("AudioClip",new List<string>()),
-        new FilterType("AudioMixer",new List<string>()),
-        new FilterType("Font", new List<string>()),
-        new FilterType("GUISkin",new List<string>()),
-        new FilterType("Mesh",new List<string>()),
-        new FilterType("Model",new List<string>()),
-        new FilterType("PhysicMaterial",new List<string>()),
-        new FilterType("Prefab",new List<string>()),
-        new FilterType("Scene",new List<string>()),
-        new FilterType("Script",new List<string>()),
-        new FilterType("Shader",new List<string>()),
-        new FilterType("Sprite",new List<string>()),
-        new FilterType("Texture",new List<string>()),
-        new FilterType("VideoClip",new List<string>()),
-        new FilterType("Non Specified",new List<string>())
-    };
+	//................................................................................................................................................
+	#region Almacenaje de datos
+	public static class ProjectFolderConfig
+	{
+		public static ConfigSet Configurations = new ConfigSet();
+	}
 
-        public List<FolderConfig> GetSelectedPresetFolderSettings(int SelectedPresetSet)
-        {
-            List<FolderConfig> FolderData = new List<FolderConfig>();
-            if (Presets.Count > 0)
-            {
-                foreach (var item in Presets)
-                {
-                    FolderData = item.GetFolderPresets();
-                }
-                return FolderData;
-            }
-            else
-                return new List<FolderConfig>();
-        }
-    }
-    #endregion
+	[System.Serializable]
+	public class ConfigSet
+	{
+		public List<ConfigPreset> Presets = new List<ConfigPreset>();
+		public List<string> Extentions = new List<string>();
+		public List<FilterType> FilterTypes = new List<FilterType>();
+
+		//Probablemente esto ya no sea necesario.
+		public List<FolderConfig> GetSelectedPresetFolderSettings(int SelectedPresetSet)
+		{
+			List<FolderConfig> FolderData = new List<FolderConfig>();
+			if (Presets.Count > 0)
+			{
+				foreach (var item in Presets)
+				{
+					FolderData = item.GetFolderPresets();
+				}
+				return FolderData;
+			}
+			else
+				return new List<FolderConfig>();
+		}
+	}
+
+
+	[System.Serializable]
+	public class ConfigPreset
+	{
+		public bool isDefault = false;
+		public string ConfigurationName = "NewConfig";
+		public List<FolderConfig> FolderPresets = new List<FolderConfig>();
+
+		public List<FolderConfig> GetFolderPresets()
+		{
+			if (FolderPresets.Count > 0)
+				return FolderPresets;
+			else
+				return new List<FolderConfig>();
+		}
+		public void AddFolderPreset(string NewFolderName, int MainType, List<string> Extentions)
+		{
+			FolderConfig N = new FolderConfig(NewFolderName, MainType, Extentions);
+			FolderPresets.Add(N);
+		}
+		public ConfigPreset Clone()
+		{
+			ConfigPreset Clone = new ConfigPreset();
+			Clone.isDefault = false;
+			Clone.ConfigurationName = ConfigurationName + "(Copy)";
+			Clone.FolderPresets = new List<FolderConfig>(FolderPresets);
+			return Clone;
+		}
+	}
+
+	[System.Serializable]
+	public class FolderConfig
+	{
+		public bool IsDefault;
+		public string FolderName = "NewFolder";
+		public int TypeIndex;
+		public List<string> extentions;
+		public bool FolderPerExtention = false;
+
+		public FolderConfig(string Name, int AttachedType, List<string> AviableExtentions,bool IsDefault = false)
+		{
+			this.IsDefault = IsDefault;
+			FolderName = Name;
+			TypeIndex = AttachedType;
+			extentions = AviableExtentions;
+		}
+	}
+
+	[System.Serializable]
+	public class FilterType
+	{
+		public bool IsDefault;
+		public bool HasMultipleExtentions = false;
+		public string FilterName;
+		public List<string> ExtentionsAllowed;
+
+		public FilterType(string Name, List<string> Extentions, bool Editable = false)
+		{
+			FilterName = Name;
+			ExtentionsAllowed = Extentions;
+			if (Extentions.Count > 1)
+				HasMultipleExtentions = true;
+			IsDefault = Editable;
+		}
+
+		public string GetExtentionAllowedList()
+		{
+			string ExtentionList = "";
+			if (ExtentionsAllowed != null && ExtentionsAllowed.Count > 0)
+			{
+				for (int i = 0; i < ExtentionsAllowed.Count; i++)
+				{
+					if (i == ExtentionsAllowed.Count - 1)
+						ExtentionList += ExtentionsAllowed[i] + ";";
+					else
+						ExtentionList += ExtentionsAllowed[i] + ", ";
+				}
+				return ExtentionList;
+			}
+			else return ExtentionList;
+			
+		}
+	}
+	#endregion
+}
