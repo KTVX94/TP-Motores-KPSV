@@ -10,6 +10,19 @@ public class AsseetPivot : MonoBehaviour {
 
     GameObject empty;
 
+    [HideInInspector]
+    public Vector3 circleHandlePos;
+    [HideInInspector]
+    public Vector3 circleHandleNormal;
+    public Transform sprite;
+    /* [HideInInspector]
+     public Vector3 circlePos;
+     [HideInInspector]
+     public Vector3 cirlceNormal;*/
+
+    List<GameObject> first;
+    List<GameObject> second;
+
     public IEnumerator DeleteMode()
     {
         while(true)
@@ -17,7 +30,7 @@ public class AsseetPivot : MonoBehaviour {
             RaycastHit hit;
             if (Physics.Raycast(transform.position, -this.transform.up, out hit, 40f))
             {
-                Debug.Log(hit.collider.gameObject.name);
+                //Debug.Log(hit.collider.gameObject.name);
                 if(hit.collider.gameObject.layer == 17)
                 {
                     DestroyImmediate(hit.collider.gameObject);     
@@ -27,7 +40,20 @@ public class AsseetPivot : MonoBehaviour {
         }
     }
 
-    
+    public IEnumerator DeleteModeRadious(float radious)
+    {
+        while (true)
+        {
+            RaycastHit hit;
+            if (Physics.Raycast(transform.position, -this.transform.up, out hit, 40f))
+            {
+                var objs = Physics.OverlapSphere(hit.point, radious);
+                
+            }
+            yield return new WaitForSeconds(0.01f);
+        }
+    }
+
     public IEnumerator UpDateOnGUI()
     {
         while(true)
@@ -35,6 +61,34 @@ public class AsseetPivot : MonoBehaviour {
             var mousePos = Event.current.mousePosition;
             transform.position += new Vector3(mousePos.x, 0, 0);
             yield return new WaitForSeconds(0.1f);
+        }
+    }
+
+    public IEnumerator GetCircleHandlePos()
+    {
+        while(true)
+        {
+            RaycastHit hit;
+            if(Physics.Raycast(transform.position, -this.transform.up, out hit, 40f))
+            {
+                if(hit.collider.gameObject.layer == 18)
+                {
+                    circleHandlePos = hit.point;
+                    circleHandleNormal = hit.normal;
+                    Debug.DrawLine(this.transform.position, hit.point);
+                    //Debug.DrawLine(hit.point, hit.normal.normalized);
+                    //sprite.position = hit.point;
+                    //sprite.up = hit.normal.normalized;
+
+
+                }
+                else
+                {
+                    Debug.DrawLine(transform.position, transform.position - transform.up * 10);
+                }
+               
+            }
+            yield return new WaitForSeconds(0.01f);
         }
     }
 
@@ -73,11 +127,26 @@ public class AsseetPivot : MonoBehaviour {
                         if (hitNC.collider.gameObject.layer == 18)
                         {
                             for (int i = 0; i < quantity; i++)
-                            {   
+                            {  
                                 var a = Instantiate(asset);
                                 a.transform.position = hitNC.point;
-                                a.transform.position += new Vector3(Random.Range(-radious, radious), a.GetComponent<Collider>().bounds.size.y / 2, Random.Range(-radious, radious));
-                                a.gameObject.layer = 17;
+                                a.transform.position += new Vector3(Random.Range(-radious + 0.5f, radious - 0.5f), a.GetComponent<Collider>().bounds.size.y / 2, Random.Range(-radious + 0.5f, radious- 0.5f));
+                                a.name = a.name + i.ToString();
+                                first.Add(a);
+
+                                RaycastHit hit2;
+                                if(Physics.Raycast(a.transform.position, - a.transform.up, out hit2, 40f))
+                                {
+                                    if(hit2.collider.gameObject.layer == 18)
+                                    {
+                                        a.gameObject.layer = 17;
+                                        Debug.Log("soy: " + a.name + "y colicione");
+                                        second.Add(a);
+                                        a.transform.position = new Vector3(hit2.point.x, hit2.point.y + a.GetComponent<Collider>().bounds.size.y / 2, hit2.point.z);
+                                        a.transform.up = hit2.normal;
+                                    }
+                                    
+                                }
                             }
                         }
                     }
@@ -129,4 +198,6 @@ public class AsseetPivot : MonoBehaviour {
             
         }
     }
+
+    
 }

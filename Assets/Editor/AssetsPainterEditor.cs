@@ -16,6 +16,9 @@ public class AssetsPainterEditor : Editor {
     private float _radious;
     private GameObject _aux;
     private bool _cohesion;
+    private Vector3 _handleCirclePos;
+    private Vector3 _handleCircleNormal;
+
 
     Saver mySave;
 
@@ -26,7 +29,9 @@ public class AssetsPainterEditor : Editor {
         _auto = false;
         _delete = false;
         assetPaiterWindow = new AssetsPainter();
-        _cohesion = false;  
+        _cohesion = false;
+        _radious = 1;
+        
         /*
         mySave = new Saver();
         _count = mySave.count;
@@ -38,9 +43,24 @@ public class AssetsPainterEditor : Editor {
 
     private void OnSceneGUI()
     {
+        if(this)
+        {
+           
+        }
         //_count = mySave.count;
         //separated = mySave.separated;
         //_target.StartCoroutine(_target.UpDateOnGui());
+        _target.StartCoroutine(_target.GetCircleHandlePos());
+        _handleCirclePos = _target.circleHandlePos;
+        _handleCircleNormal = _target.circleHandleNormal;
+        //Debug.Log(_handleCirclePos);
+        //Debug.Log(_handleCircleNormal);
+        if(_quantity >1)
+        {
+            Handles.color = Color.green;
+            //Handles.DrawSolidDisc(_handleCirclePos, _handleCircleNormal, _radious);
+            Handles.DrawWireDisc(_handleCirclePos, _handleCircleNormal, _radious);
+        }
         Handles.BeginGUI();
         //_radious = 1;
         var c = Camera.current.WorldToScreenPoint(_target.transform.position);
@@ -58,9 +78,9 @@ public class AssetsPainterEditor : Editor {
                 //mySave.count++;
             }
 
-
+        
         Handles.EndGUI();
-
+        
     }
 
     void DrawHandles()
@@ -68,6 +88,7 @@ public class AssetsPainterEditor : Editor {
         //_target.asset = null;
         //_target.StartCoroutine(_target.UpDateOnGUI());
         //GUI.Box(new Rect(20,20,100,100), GUIContent.none);
+        //Handles.DrawSolidDisc(_target.transform.position, _target.transform.up, 10);
         GUILayout.BeginArea(new Rect(20, 20, 115, 230));
         //GUILayout.Toggle()
         //GUI.BeginGroup(new Rect(10, 0, 100, 500));
@@ -80,6 +101,7 @@ public class AssetsPainterEditor : Editor {
             //_radious = EditorGUILayout.FloatField(_radious);
             _radious = EditorGUILayout.Slider(_radious, 1, 5);
             //mySave.radious = EditorGUILayout.FloatField(_radious);
+
         }   
         if (_radious > 5)
             _radious = 5;
@@ -95,6 +117,7 @@ public class AssetsPainterEditor : Editor {
             if (GUILayout.Button("Act. Auto Mode"))
             {
                 _auto = true;
+                _quantity = 1;
                 _target.StartCoroutine(_target.Automatic());
                 _count += _target.counter;  
             }
@@ -139,5 +162,7 @@ public class AssetsPainterEditor : Editor {
         //GUILayout.Label("Cantidad:" + _count.ToString());
         GUILayout.EndArea();
     }
+
+    
 
 }
